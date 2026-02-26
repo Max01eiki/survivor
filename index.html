@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Snake | Antigravity</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="game-container">
+        <header>
+            <h1>NEON<span>SNAKE</span></h1>
+            <div class="score-board">
+                <div class="score-item">
+                    <span class="label">PONTOS</span>
+                    <span id="current-score" class="value">0</span>
+                </div>
+                <div class="score-item">
+                    <span class="label">RECORDE</span>
+                    <span id="high-score" class="value">0</span>
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <canvas id="gameCanvas" width="600" height="600"></canvas>
+
+            <div id="overlay" class="overlay hidden">
+                <div class="overlay-content">
+                    <h2 id="overlay-title">GAME OVER</h2>
+                    <p id="overlay-msg">Pressione <span>ESPAÇO</span> para recomeçar</p>
+                    <button id="restart-btn">JOGAR NOVAMENTE</button>
+                </div>
+            </div>
+
+            <div id="start-screen" class="overlay">
+                <div class="overlay-content">
+                    <h2>BEM-VINDO</h2>
+                    <p>Use as <span>SETAS</span> ou <span>WASD</span> para mover</p>
+                    <button id="start-btn">INICIAR JOGO</button>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>Desenvolvido com 🐍 no Antigravity</p>
+        </footer>
+    </div>
+    <script src="script.js"></script>
+</body>
+
+</html>

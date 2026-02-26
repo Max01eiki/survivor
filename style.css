@@ -1,0 +1,199 @@
+:root {
+    --bg-color: #0a0a12;
+    --panel-color: rgba(20, 20, 35, 0.8);
+    --neon-green: #39ff14;
+    --neon-red: #ff3131;
+    --neon-blue: #00d4ff;
+    --text-color: #e0e0e0;
+    --font-main: 'Outfit', sans-serif;
+    --glow-shadow: 0 0 10px rgba(57, 255, 20, 0.5), 0 0 20px rgba(57, 255, 20, 0.3);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: var(--font-main);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    overflow: hidden;
+    background-image:
+        radial-gradient(circle at 50% 50%, rgba(30, 30, 60, 0.3) 0%, transparent 80%),
+        linear-gradient(rgba(10, 10, 18, 0.1) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(10, 10, 18, 0.1) 1px, transparent 1px);
+    background-size: 100% 100%, 30px 30px, 30px 30px;
+}
+
+.game-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 800px;
+    padding: 20px;
+}
+
+header {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 15px 25px;
+    background: var(--panel-color);
+    border-radius: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+h1 {
+    font-weight: 700;
+    letter-spacing: 2px;
+    font-size: 1.5rem;
+    color: var(--text-color);
+}
+
+h1 span {
+    color: var(--neon-green);
+    text-shadow: var(--glow-shadow);
+}
+
+.score-board {
+    display: flex;
+    gap: 30px;
+}
+
+.score-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.label {
+    font-size: 0.7rem;
+    color: #888;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.value {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--neon-blue);
+    text-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+}
+
+main {
+    position: relative;
+    background: #000;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.5), inset 0 0 100px rgba(0, 212, 255, 0.05);
+    border: 2px solid rgba(255, 255, 255, 0.05);
+}
+
+canvas {
+    display: block;
+    max-width: 100%;
+    height: auto;
+}
+
+.overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(10, 10, 18, 0.85);
+    backdrop-filter: blur(5px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10;
+    transition: opacity 0.3s ease;
+}
+
+.overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.overlay-content {
+    text-align: center;
+    padding: 40px;
+}
+
+.overlay-content h2 {
+    font-size: 3rem;
+    margin-bottom: 20px;
+    letter-spacing: 4px;
+    color: var(--neon-red);
+    text-shadow: 0 0 15px rgba(255, 49, 49, 0.6);
+}
+
+#start-screen h2 {
+    color: var(--neon-blue);
+    text-shadow: 0 0 15px rgba(0, 212, 255, 0.6);
+}
+
+.overlay-content p {
+    margin-bottom: 30px;
+    font-size: 1.1rem;
+    color: #aaa;
+}
+
+.overlay-content span {
+    color: #fff;
+    padding: 2px 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    font-weight: 700;
+}
+
+button {
+    background: transparent;
+    border: 2px solid var(--neon-green);
+    color: var(--neon-green);
+    padding: 12px 30px;
+    font-size: 1rem;
+    font-family: var(--font-main);
+    font-weight: 700;
+    cursor: pointer;
+    border-radius: 5px;
+    transition: all 0.3s ease;
+    letter-spacing: 1px;
+}
+
+button:hover {
+    background: var(--neon-green);
+    color: #000;
+    box-shadow: 0 0 20px rgba(57, 255, 20, 0.6);
+}
+
+footer {
+    margin-top: 20px;
+    color: #555;
+    font-size: 0.8rem;
+}
+
+@media (max-width: 650px) {
+    .game-container {
+        padding: 10px;
+    }
+
+    header {
+        padding: 10px 15px;
+    }
+
+    .overlay-content h2 {
+        font-size: 2rem;
+    }
+}
