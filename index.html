@@ -15,14 +15,17 @@
     <div class="game-container">
         <header>
             <h1>NEON<span>SNAKE</span></h1>
-            <div class="score-board">
-                <div class="score-item">
-                    <span class="label">PONTOS</span>
-                    <span id="current-score" class="value">0</span>
-                </div>
-                <div class="score-item">
-                    <span class="label">RECORDE</span>
-                    <span id="high-score" class="value">0</span>
+            <div class="header-right">
+                <button id="sound-toggle" class="icon-btn">🔊</button>
+                <div class="score-board">
+                    <div class="score-item">
+                        <span class="label">PONTOS</span>
+                        <span id="current-score" class="value">0</span>
+                    </div>
+                    <div class="score-item">
+                        <span class="label">RECORDE</span>
+                        <span id="high-score" class="value">0</span>
+                    </div>
                 </div>
             </div>
         </header>
@@ -46,6 +49,24 @@
                 </div>
             </div>
         </main>
+
+        <div class="mobile-controls">
+            <div class="control-row">
+                <button id="btn-up" class="ctrl-btn">↑</button>
+            </div>
+            <div class="control-row">
+                <button id="btn-left" class="ctrl-btn">←</button>
+                <button id="btn-down" class="ctrl-btn">↓</button>
+                <button id="btn-right" class="ctrl-btn">→</button>
+            </div>
+        </div>
+
+        <div class="powerup-legend">
+            <div class="legend-item"><span class="dot slow"></span> Devagar</div>
+            <div class="legend-item"><span class="dot double"></span> 2x Pontos</div>
+            <div class="legend-item"><span class="dot ghost"></span> Fantasma</div>
+            <div class="legend-item"><span class="dot wall"></span> Obstáculo</div>
+        </div>
 
         <footer>
             <p>Desenvolvido com 🐍 no Antigravity</p>
