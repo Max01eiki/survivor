@@ -6,6 +6,9 @@
     --neon-blue: #00d4ff;
     --neon-purple: #bd00ff;
     --neon-gold: #ffbd00;
+    --neon-fast: #ff00ff;
+    --neon-half: #ffffff;
+    --neon-portal: #00ffcc;
     --text-color: #e0e0e0;
     --font-main: 'Outfit', sans-serif;
     --glow-shadow: 0 0 10px rgba(57, 255, 20, 0.5), 0 0 20px rgba(57, 255, 20, 0.3);
@@ -14,6 +17,13 @@
 @keyframes gridMove {
     0% { background-position: 0 0; }
     100% { background-position: 30px 30px; }
+}
+
+@keyframes rainbowBorder {
+    0% { border-color: var(--neon-green); box-shadow: 0 0 20px rgba(57, 255, 20, 0.4); }
+    33% { border-color: var(--neon-blue); box-shadow: 0 0 20px rgba(0, 212, 255, 0.4); }
+    66% { border-color: var(--neon-purple); box-shadow: 0 0 20px rgba(189, 0, 255, 0.4); }
+    100% { border-color: var(--neon-green); box-shadow: 0 0 20px rgba(57, 255, 20, 0.4); }
 }
 
 * {
@@ -125,10 +135,11 @@ h1 span {
 main {
     position: relative;
     background: #000;
-    border-radius: 10px;
+    border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 0 40px rgba(0, 0, 0, 0.5), inset 0 0 100px rgba(0, 212, 255, 0.05);
-    border: 2px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+    border: 3px solid var(--neon-green);
+    animation: rainbowBorder 8s linear infinite;
 }
 
 canvas {
@@ -168,6 +179,86 @@ canvas {
     letter-spacing: 4px;
     color: var(--neon-red);
     text-shadow: 0 0 15px rgba(255, 49, 49, 0.6);
+}
+
+/* Missões UI */
+.mission-ui {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.8);
+    padding: 10px 20px;
+    border-radius: 20px;
+    border: 1px solid var(--neon-blue);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    min-width: 200px;
+}
+
+#mission-text {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--neon-blue);
+    letter-spacing: 1px;
+}
+
+.mission-bar-bg {
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.mission-bar {
+    width: 100%;
+    height: 100%;
+    background: var(--neon-blue);
+    transition: width 0.1s linear;
+}
+
+/* Upgrades */
+.upgrade-options {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.upgrade-btn {
+    width: 100%;
+    border-color: var(--neon-gold);
+    color: var(--neon-gold);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 15px;
+    height: auto;
+    gap: 5px;
+}
+
+.upgrade-btn strong {
+    font-size: 1.1rem;
+    letter-spacing: 1px;
+}
+
+.upgrade-btn span {
+    font-size: 0.8rem;
+    font-weight: 400;
+    color: #bbb;
+}
+
+.upgrade-btn:hover {
+    background: var(--neon-gold);
+    color: #000;
+    box-shadow: 0 0 20px rgba(255, 189, 0, 0.4);
+}
+
+.upgrade-btn:hover span {
+    color: #333;
 }
 
 #start-screen h2 {
@@ -286,7 +377,16 @@ footer {
     display: flex;
     align-items: center;
     gap: 8px;
-    color: #888;
+    color: #ccc;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.legend-item strong {
+    color: #fff;
+    font-size: 0.8rem;
 }
 
 .dot {
@@ -298,4 +398,7 @@ footer {
 .dot.slow { background: var(--neon-blue); box-shadow: 0 0 5px var(--neon-blue); }
 .dot.double { background: var(--neon-gold); box-shadow: 0 0 5px var(--neon-gold); }
 .dot.ghost { background: var(--neon-purple); box-shadow: 0 0 5px var(--neon-purple); }
+.dot.fast { background: var(--neon-fast); box-shadow: 0 0 5px var(--neon-fast); }
+.dot.half { background: #555; border: 1px solid #777; }
+.dot.portal { background: var(--neon-portal); box-shadow: 0 0 10px var(--neon-portal); border-radius: 50%; }
 .dot.wall { background: #888; }

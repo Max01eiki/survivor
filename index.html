@@ -33,6 +33,34 @@
         <main>
             <canvas id="gameCanvas" width="600" height="600"></canvas>
 
+            <!-- Missões -->
+            <div id="mission-ui" class="mission-ui hidden">
+                <span id="mission-text">MISSÃO: Comer 3 Azuis</span>
+                <div class="mission-bar-bg"><div id="mission-timer" class="mission-bar"></div></div>
+            </div>
+
+            <!-- Upgrade Selection -->
+            <div id="upgrade-screen" class="overlay hidden">
+                <div class="overlay-content">
+                    <h2>UPGRADE!</h2>
+                    <p>Escolha um bônus permanente:</p>
+                    <div class="upgrade-options">
+                        <button class="upgrade-btn" data-type="eagle">
+                            <strong>👁️ VISÃO DE ÁGUIA</strong>
+                            <span>Remove a escuridão do mapa para sempre.</span>
+                        </button>
+                        <button class="upgrade-btn" data-type="metabolism">
+                            <strong>🧬 METABOLISMO</strong>
+                            <span>Dobra os pontos e muda o visual da cobra.</span>
+                        </button>
+                        <button class="upgrade-btn" data-type="agility">
+                            <strong>⚡ AGILIDADE</strong>
+                            <span>Curvas mais rápidas e movimentos fluidos.</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <div id="overlay" class="overlay hidden">
                 <div class="overlay-content">
                     <h2 id="overlay-title">GAME OVER</h2>
@@ -62,10 +90,13 @@
         </div>
 
         <div class="powerup-legend">
-            <div class="legend-item"><span class="dot slow"></span> Devagar</div>
-            <div class="legend-item"><span class="dot double"></span> 2x Pontos</div>
-            <div class="legend-item"><span class="dot ghost"></span> Fantasma</div>
-            <div class="legend-item"><span class="dot wall"></span> Obstáculo</div>
+            <div class="legend-item"><span class="dot slow"></span> <strong>Devagar:</strong> Fica mais lento</div>
+            <div class="legend-item"><span class="dot double"></span> <strong>2x Pontos:</strong> Pontos em dobro</div>
+            <div class="legend-item"><span class="dot ghost"></span> <strong>Fantasma:</strong> Atravessa tudo</div>
+            <div class="legend-item"><span class="dot fast"></span> <strong>Rápido:</strong> Cuidado! Acelera</div>
+            <div class="legend-item"><span class="dot half"></span> <strong>1/2 Pontos:</strong> Pontos pela metade</div>
+            <div class="legend-item"><span class="dot wall"></span> <strong>Obstáculo:</strong> Não bata aqui</div>
+            <div class="legend-item"><span class="dot portal"></span> <strong>Portal:</strong> Teletransporte</div>
         </div>
 
         <footer>

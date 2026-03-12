@@ -1,5 +1,5 @@
 /**
- * NEON SNAKE - Game Logic (Extended Version)
+ * NEON SNAKE - Game Logic (Ultimate Laser & Enemy Ghost Edition)
  */
 
 // --- Configuration & Constants ---
@@ -8,10 +8,15 @@ const ctx = canvas.getContext('2d');
 const scoreElement = document.getElementById('current-score');
 const highScoreElement = document.getElementById('high-score');
 const startScreen = document.getElementById('start-screen');
+const upgradeScreen = document.getElementById('upgrade-screen');
 const overlay = document.getElementById('overlay');
 const restartBtn = document.getElementById('restart-btn');
 const startBtn = document.getElementById('start-btn');
 const soundToggle = document.getElementById('sound-toggle');
+
+const missionUI = document.getElementById('mission-ui');
+const missionText = document.getElementById('mission-text');
+const missionBar = document.getElementById('mission-timer');
 
 const GRID_SIZE = 20;
 const TILE_COUNT = canvas.width / GRID_SIZE;
@@ -25,20 +30,27 @@ const COLORS = {
     particle: '#00d4ff',
     obstacle: '#444444',
     slow: '#00d4ff',
+    fast: '#ff00ff',
     double: '#ffbd00',
-    ghost: '#bd00ff'
+    half: '#555555',
+    ghost: '#bd00ff',
+    portal: '#00ffcc',
+    laserWarning: 'rgba(255, 0, 0, 0.3)',
+    laserActive: '#ff0000',
+    enemyGhost: 'rgba(255, 255, 255, 0.4)'
 };
 
 // --- Game State ---
 let snake = [];
 let food = { x: 5, y: 5 };
 let obstacles = [];
-let powerUp = null; // { x, y, type, life }
-let activePowerUps = {
-    slow: 0,
-    double: 0,
-    ghost: 0
-};
+let portals = [];
+let lasers = [];
+let enemyGhost = []; // Array de posições do corpo da cobra fantasma
+let enemyGhostIndex = 0;
+let enemyGhostTick = 0;
+let powerUp = null;
+let activePowerUps = { slow: 0, fast: 0, double: 0, half: 0, ghost: 0 };
 let dx = 0, dy = 0;
 let nextDx = 0, nextDy = 0;
 let score = 0;
@@ -46,12 +58,20 @@ let highScore = localStorage.getItem('antigravity_snake_record') || 0;
 let gameLoop;
 let isPaused = true;
 let gameSpeed = 100;
-let particles = [];
 let soundEnabled = true;
+let portalTimer = 0;
+let laserSpawnTimer = 0;
 
-// --- Audio System (Web Audio API) ---
+// Record Recording (Para gerar o rival fantasma no futuro)
+let bestPath = JSON.parse(localStorage.getItem('snake_best_path')) || [];
+let currentPath = [];
+
+// Roguelike Upgrades
+let perks = { eagle: false, metabolism: false, agility: false };
+let currentMission = null;
+
+// --- Audio System ---
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
 function playSound(freq, type, duration, vol = 0.1) {
     if (!soundEnabled) return;
     try {
@@ -63,23 +83,22 @@ function playSound(freq, type, duration, vol = 0.1) {
         gain.connect(audioCtx.destination);
         gain.gain.setValueAtTime(vol, audioCtx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
-        osc.start();
-        osc.stop(audioCtx.currentTime + duration);
-    } catch (e) { console.log("Audio play error", e); }
+        osc.start(); osc.stop(audioCtx.currentTime + duration);
+    } catch (e) {}
 }
-
 const sounds = {
-    move: () => playSound(150, 'sine', 0.05, 0.02),
+    move: () => perks.agility ? null : playSound(150, 'sine', 0.05, 0.02),
     eat: () => playSound(600, 'square', 0.15, 0.05),
     powerup: () => playSound(800, 'triangle', 0.3, 0.08),
+    bad: () => playSound(200, 'sawtooth', 0.4, 0.1),
+    mission: () => playSound(1000, 'sine', 0.5, 0.1),
+    laser: () => playSound(300, 'sawtooth', 0.2, 0.05),
     crash: () => playSound(100, 'sawtooth', 0.5, 0.1)
 };
 
 // --- Initialization ---
 function init() {
     highScoreElement.textContent = highScore;
-
-    // Event Listeners
     window.addEventListener('keydown', handleKeyDown);
     startBtn.addEventListener('click', startGame);
     restartBtn.addEventListener('click', startGame);
@@ -88,39 +107,44 @@ function init() {
         soundToggle.textContent = soundEnabled ? '🔊' : '🔇';
     });
 
-    // Mobile buttons
-    document.getElementById('btn-up').addEventListener('touchstart', (e) => { e.preventDefault(); changeDir(0, -1); });
-    document.getElementById('btn-down').addEventListener('touchstart', (e) => { e.preventDefault(); changeDir(0, 1); });
-    document.getElementById('btn-left').addEventListener('touchstart', (e) => { e.preventDefault(); changeDir(-1, 0); });
-    document.getElementById('btn-right').addEventListener('touchstart', (e) => { e.preventDefault(); changeDir(1, 0); });
-    
-    // Mouse clicks for desktop debug/testing mobile buttons
-    document.getElementById('btn-up').addEventListener('mousedown', () => changeDir(0, -1));
-    document.getElementById('btn-down').addEventListener('mousedown', () => changeDir(0, 1));
-    document.getElementById('btn-left').addEventListener('mousedown', () => changeDir(-1, 0));
-    document.getElementById('btn-right').addEventListener('mousedown', () => changeDir(1, 0));
+    document.querySelectorAll('.upgrade-btn').forEach(btn => {
+        btn.onclick = () => {
+            perks[btn.dataset.type] = true;
+            upgradeScreen.classList.add('hidden');
+            isPaused = false;
+            runGameLoop();
+        };
+    });
+
+    // Mobile
+    document.getElementById('btn-up').onclick = () => changeDir(0, -1);
+    document.getElementById('btn-down').onclick = () => changeDir(0, 1);
+    document.getElementById('btn-left').onclick = () => changeDir(-1, 0);
+    document.getElementById('btn-right').onclick = () => changeDir(1, 0);
 
     draw();
 }
 
 function startGame() {
     if (audioCtx.state === 'suspended') audioCtx.resume();
-    
     snake = [{ x: 10, y: 10 }, { x: 10, y: 11 }, { x: 10, y: 12 }];
     dx = 0; dy = -1; nextDx = 0; nextDy = -1;
-    score = 0;
-    gameSpeed = 100;
-    activePowerUps = { slow: 0, double: 0, ghost: 0 };
+    score = 0; gameSpeed = 100; portalTimer = 0; laserSpawnTimer = 0;
+    activePowerUps = { slow: 0, fast: 0, double: 0, half: 0, ghost: 0 };
+    perks = { eagle: false, metabolism: false, agility: false };
+    currentPath = [];
+    
+    // Ghost Mode: O fantasma é a sua cobra recordista, mas ele se move de forma assíncrona
+    enemyGhostIndex = 0;
+    enemyGhostTick = 0;
+    enemyGhost = [];
+
+    currentMission = null; missionUI.classList.add('hidden');
     scoreElement.textContent = score;
-    startScreen.classList.add('hidden');
-    overlay.classList.add('hidden');
+    startScreen.classList.add('hidden'); upgradeScreen.classList.add('hidden'); overlay.classList.add('hidden');
     isPaused = false;
-
-    createObstacles();
-    createFood();
-    powerUp = null;
-    particles = [];
-
+    lasers = [];
+    createObstacles(); createFood(); createPortals();
     if (gameLoop) clearTimeout(gameLoop);
     runGameLoop();
 }
@@ -129,130 +153,186 @@ function runGameLoop() {
     if (isPaused) return;
     update();
     draw();
-    
-    // Adjust speed based on power-up
-    let currentSpeed = activePowerUps.slow > 0 ? gameSpeed * 1.5 : gameSpeed;
-    gameLoop = setTimeout(runGameLoop, currentSpeed);
+    let speed = gameSpeed;
+    if (activePowerUps.slow > 0) speed *= 1.5;
+    if (activePowerUps.fast > 0) speed *= 0.6;
+    gameLoop = setTimeout(runGameLoop, speed);
 }
 
-// --- Logic ---
 function update() {
     dx = nextDx; dy = nextDy;
     const head = { x: snake[0].x + dx, y: snake[0].y + dy };
+    currentPath.push({x: head.x, y: head.y});
 
-    // Walls Collision
+    // Colisões de Parede
     if (head.x < 0 || head.x >= TILE_COUNT || head.y < 0 || head.y >= TILE_COUNT) {
         if (activePowerUps.ghost > 0) {
-            // Screen wrap in ghost mode
             head.x = (head.x + TILE_COUNT) % TILE_COUNT;
             head.y = (head.y + TILE_COUNT) % TILE_COUNT;
-        } else {
+        } else { gameOver(); return; }
+    }
+
+    // Portal
+    portals.forEach(p => { if (head.x === p.x && head.y === p.y) {
+        const other = portals.find(o => o !== p);
+        head.x = other.x; head.y = other.y; sounds.powerup();
+    }});
+
+    // Lasers
+    lasers.forEach(l => {
+        if (l.state === 'active') {
+            if (l.type === 'h' && head.y === l.pos) gameOver();
+            if (l.type === 'v' && head.x === l.pos) gameOver();
+        }
+    });
+    if (isPaused) return;
+
+    // Colisão com o GHOST RIVAL
+    if (enemyGhost.some(p => p.x === head.x && p.y === head.y)) {
+        if (activePowerUps.ghost <= 0) {
             gameOver(); return;
         }
     }
 
-    // Obstacle Collision
-    for (let wall of obstacles) {
-        if (head.x === wall.x && head.y === wall.y) {
-            if (activePowerUps.ghost > 0) continue;
-            gameOver(); return;
-        }
-    }
-
-    // Body Collision
-    for (let part of snake) {
-        if (head.x === part.x && head.y === part.y) {
-            gameOver(); return;
-        }
-    }
+    // Obstáculos e Próprio Corpo
+    for (let wall of obstacles) if (head.x === wall.x && head.y === wall.y) { gameOver(); return; }
+    for (let i = 1; i < snake.length; i++) if (head.x === snake[i].x && head.y === snake[i].y) { if (activePowerUps.ghost > 0) continue; gameOver(); return; }
 
     snake.unshift(head);
 
-    // Food Collision
+    // Comida
     if (head.x === food.x && head.y === food.y) {
-        const points = activePowerUps.double > 0 ? 20 : 10;
-        score += points;
+        score += (activePowerUps.double > 0 ? 20 : 10);
         scoreElement.textContent = score;
-        if (gameSpeed > 40) gameSpeed -= 0.5;
-        
-        createParticles(food.x * GRID_SIZE + GRID_SIZE / 2, food.y * GRID_SIZE + GRID_SIZE / 2, COLORS.food);
+        gameSpeed = Math.max(40, gameSpeed - 0.5);
         sounds.eat();
         createFood();
         updateHighScore();
-
-        // Chance to spawn Power-up
-        if (!powerUp && Math.random() < 0.3) spawnPowerUp();
+        if (score > 0 && score % 100 === 0) showUpgradeScreen();
+        if (currentMission && currentMission.type === 'eat') {
+            currentMission.count++;
+            if (currentMission.count >= currentMission.target) completeMission();
+        }
+        if (!powerUp && Math.random() < 0.6) spawnPowerUp();
+        if (Math.random() < 0.3 && !currentMission) startMission();
     } else {
         snake.pop();
     }
 
-    // Power-up Collision
+    // Power-ups
     if (powerUp && head.x === powerUp.x && head.y === powerUp.y) {
-        activePowerUps[powerUp.type] += 50; // Active for 50 ticks
-        sounds.powerup();
-        createParticles(powerUp.x * GRID_SIZE + GRID_SIZE / 2, powerUp.y * GRID_SIZE + GRID_SIZE / 2, COLORS[powerUp.type]);
+        const isBad = powerUp.type === 'fast' || powerUp.type === 'half';
+        if (isBad) sounds.bad(); else sounds.powerup();
+        activePowerUps[powerUp.type] += 80;
         powerUp = null;
     }
 
-    // Update Timers
-    Object.keys(activePowerUps).forEach(key => {
-        if (activePowerUps[key] > 0) activePowerUps[key]--;
-    });
-    if (powerUp) {
-        powerUp.life--;
-        if (powerUp.life <= 0) powerUp = null;
+    // LÓGICA DO RIVAL FANTASMA (LENTO E MORTAL)
+    // O fantasma caminha o mesmo caminho do recorde, mas só se move a cada 2 ticks do jogo (mais lento)
+    enemyGhostTick++;
+    if (enemyGhostTick >= 2) { 
+        enemyGhostTick = 0;
+        if (bestPath && bestPath[enemyGhostIndex]) {
+            enemyGhost.unshift(bestPath[enemyGhostIndex]);
+            // Mantém o tamanho do fantasma similar ao da cobra normal naquela época (ou fixo se preferir)
+            if (enemyGhost.length > 10) enemyGhost.pop(); 
+            enemyGhostIndex++;
+            // Se o fantasma terminar o caminho, ele recomeça para continuar rondando o mapa
+            if (enemyGhostIndex >= bestPath.length) enemyGhostIndex = 0;
+        }
     }
 
-    updateParticles();
+    // Lasers
+    for (let i = lasers.length - 1; i >= 0; i--) {
+        let l = lasers[i];
+        l.timer--;
+        if (l.timer <= 0) {
+            if (l.state === 'warning') { l.state = 'active'; l.timer = 40; sounds.laser(); } 
+            else { lasers.splice(i, 1); }
+        }
+    }
+
+    // Spawn Laser
+    laserSpawnTimer++;
+    if (laserSpawnTimer > 150) { spawnLaser(); laserSpawnTimer = 0; }
+
+    Object.keys(activePowerUps).forEach(k => { if (activePowerUps[k] > 0) activePowerUps[k]--; });
+    
+    if (currentMission) {
+        currentMission.timeLeft--;
+        missionBar.style.width = (currentMission.timeLeft / currentMission.initialTime) * 100 + '%';
+        if (currentMission.timeLeft <= 0) { currentMission = null; missionUI.classList.add('hidden'); }
+    }
+    
+    portalTimer++; if (portalTimer > 400) { createPortals(); portalTimer = 0; }
+}
+
+function spawnLaser() {
+    const type = Math.random() < 0.5 ? 'h' : 'v';
+    const pos = Math.floor(Math.random() * TILE_COUNT);
+    lasers.push({ type, pos, state: 'warning', timer: 60 });
+}
+
+function showUpgradeScreen() { isPaused = true; upgradeScreen.classList.remove('hidden'); }
+
+function startMission() {
+    const isScoreMission = Math.random() < 0.5;
+    if (isScoreMission) {
+        currentMission = { type: 'score', target: 100, startScore: score, timeLeft: 200, initialTime: 200 };
+        missionText.textContent = "MISSÃO: +100 PONTOS";
+    } else {
+        currentMission = { type: 'eat', target: 3, count: 0, timeLeft: 150, initialTime: 150 };
+        missionText.textContent = "MISSÃO: COMER 3 FRUTAS";
+    }
+    missionUI.classList.remove('hidden');
+    sounds.mission();
+}
+
+function completeMission() {
+    score += 100;
+    scoreElement.textContent = score;
+    currentMission = null;
+    missionUI.classList.add('hidden');
+    sounds.powerup();
+    if (snake.length > 5) snake.splice(-3);
+}
+
+function createPortals() {
+    portals = [{x: Math.floor(Math.random()*TILE_COUNT), y: Math.floor(Math.random()*TILE_COUNT)},
+               {x: Math.floor(Math.random()*TILE_COUNT), y: Math.floor(Math.random()*TILE_COUNT)}];
 }
 
 function createFood() {
     food = { x: Math.floor(Math.random() * TILE_COUNT), y: Math.floor(Math.random() * TILE_COUNT) };
-    const onSnake = snake.some(p => p.x === food.x && p.y === food.y);
-    const onWall = obstacles.some(p => p.x === food.x && p.y === food.y);
-    if (onSnake || onWall) createFood();
+    if (snake.some(p => p.x === food.x && p.y === food.y)) createFood();
 }
 
 function createObstacles() {
     obstacles = [];
-    // Random levels
     const level = Math.floor(Math.random() * 3);
-    if (level === 1) { // 4 corners
-        for (let i = 5; i < 10; i++) {
-            obstacles.push({x: i, y: 5}, {x: TILE_COUNT - 1 - i, y: 5}, {x: i, y: TILE_COUNT - 6}, {x: TILE_COUNT - 1 - i, y: TILE_COUNT - 6});
-        }
-    } else if (level === 2) { // H shape
-        for (let i = 8; i < 22; i++) {
-            obstacles.push({x: 10, y: i}, {x: 20, y: i}, {x: i, y: 15});
-        }
-    }
+    if (level === 1) for(let i=5; i<15; i++) obstacles.push({x:i, y:10});
 }
 
 function spawnPowerUp() {
-    const types = ['slow', 'double', 'ghost'];
-    powerUp = {
-        x: Math.floor(Math.random() * TILE_COUNT),
-        y: Math.floor(Math.random() * TILE_COUNT),
-        type: types[Math.floor(Math.random() * types.length)],
-        life: 100
-    };
-}
-
-function handleKeyDown(e) {
-    const key = e.key.toLowerCase();
-    if (e.code === 'Space' && !overlay.classList.contains('hidden')) { startGame(); return; }
-    
-    if ((key === 'arrowup' || key === 'w')) changeDir(0, -1);
-    else if ((key === 'arrowdown' || key === 's')) changeDir(0, 1);
-    else if ((key === 'arrowleft' || key === 'a')) changeDir(-1, 0);
-    else if ((key === 'arrowright' || key === 'd')) changeDir(1, 0);
+    const types = ['slow', 'fast', 'double', 'half', 'ghost'];
+    powerUp = { x: Math.floor(Math.random()*TILE_COUNT), y: Math.floor(Math.random()*TILE_COUNT), 
+                type: types[Math.floor(Math.random()*types.length)], life: 150 };
 }
 
 function changeDir(nx, ny) {
     if (isPaused) return;
-    if (nx === -dx && ny === -dy) return; // Prevent 180
+    if (nx === -dx && ny === -dy) return;
     nextDx = nx; nextDy = ny;
     sounds.move();
+}
+
+function handleKeyDown(e) {
+    const key = e.key.toLowerCase();
+    if (e.code === 'Space' && !overlay.classList.contains('hidden')) startGame();
+    if (key === 'w' || key === 'arrowup') changeDir(0, -1);
+    if (key === 's' || key === 'arrowdown') changeDir(0, 1);
+    if (key === 'a' || key === 'arrowleft') changeDir(-1, 0);
+    if (key === 'd' || key === 'arrowright') changeDir(1, 0);
 }
 
 function updateHighScore() {
@@ -260,92 +340,67 @@ function updateHighScore() {
         highScore = score;
         highScoreElement.textContent = highScore;
         localStorage.setItem('antigravity_snake_record', highScore);
+        localStorage.setItem('snake_best_path', JSON.stringify(currentPath));
     }
 }
 
 function gameOver() {
-    isPaused = true;
-    sounds.crash();
+    isPaused = true; sounds.crash();
     overlay.classList.remove('hidden');
-    document.getElementById('overlay-title').textContent = 'GAME OVER';
-    document.getElementById('overlay-msg').innerHTML = `Pontuação Final: ${score}<br>Pressione <span>ESPAÇO</span> para recomeçar`;
 }
 
-// --- Visuals ---
 function draw() {
-    ctx.fillStyle = COLORS.bg;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = COLORS.bg; ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Grid
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
-    for (let i = 0; i < TILE_COUNT; i++) {
-        ctx.beginPath(); ctx.moveTo(i * GRID_SIZE, 0); ctx.lineTo(i * GRID_SIZE, canvas.height); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(0, i * GRID_SIZE); ctx.lineTo(canvas.width, i * GRID_SIZE); ctx.stroke();
-    }
-
-    // Obstacles
-    obstacles.forEach(w => drawGlowRect(w.x * GRID_SIZE + 1, w.y * GRID_SIZE + 1, GRID_SIZE - 2, GRID_SIZE - 2, COLORS.obstacle, 5));
-
-    // Food
-    drawGlowRect(food.x * GRID_SIZE + 4, food.y * GRID_SIZE + 4, GRID_SIZE - 8, GRID_SIZE - 8, COLORS.food, 15);
-
-    // Power-up
-    if (powerUp) {
-        const pulse = Math.abs(Math.sin(Date.now() / 200)) * 10;
-        drawGlowRect(powerUp.x * GRID_SIZE + 4, powerUp.y * GRID_SIZE + 4, GRID_SIZE - 8, GRID_SIZE - 8, COLORS[powerUp.type], 10 + pulse);
-    }
-
-    // Snake
-    snake.forEach((part, index) => {
-        let color = index === 0 ? COLORS.snakeHead : COLORS.snakeBody;
-        let glow = index === 0 ? 20 : 10;
-        
-        if (activePowerUps.ghost > 0) {
-            ctx.globalAlpha = 0.5;
-            color = COLORS.ghost;
-        }
-
-        drawGlowRect(part.x * GRID_SIZE + 1, part.y * GRID_SIZE + 1, GRID_SIZE - 2, GRID_SIZE - 2, color, glow);
-        ctx.globalAlpha = 1.0;
+    lasers.forEach(l => {
+        ctx.save();
+        ctx.lineWidth = l.state === 'active' ? 4 : 1;
+        ctx.strokeStyle = l.state === 'active' ? COLORS.laserActive : COLORS.laserWarning;
+        ctx.beginPath();
+        if (l.type === 'h') { ctx.moveTo(0, l.pos*20+10); ctx.lineTo(600, l.pos*20+10); }
+        else { ctx.moveTo(l.pos*20+10, 0); ctx.lineTo(l.pos*20+10, 600); }
+        ctx.stroke(); ctx.restore();
     });
 
-    drawParticles();
+    portals.forEach(p => {
+        ctx.strokeStyle = COLORS.portal; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(p.x*20+10, p.y*20+10, 8, 0, Math.PI*2); ctx.stroke();
+    });
+    
+    obstacles.forEach(w => drawGlowRect(w.x*20+1, w.y*20+1, 18, 18, COLORS.obstacle, 5));
+    drawGlowRect(food.x*20+4, food.y*20+4, 12, 12, COLORS.food, 15);
+
+    // RIVAL GHOST (DESENHO)
+    enemyGhost.forEach((p, i) => {
+        ctx.globalAlpha = i === 0 ? 0.6 : 0.3;
+        drawGlowRect(p.x*20+1, p.y*20+1, 18, 18, '#ffffff', i===0?15:5);
+    });
+    ctx.globalAlpha = 1.0;
+
+    if (powerUp) drawGlowRect(powerUp.x*20+4, powerUp.y*20+4, 12, 12, COLORS[powerUp.type], 10);
+
+    snake.forEach((p, i) => {
+        let color = i === 0 ? COLORS.snakeHead : COLORS.snakeBody;
+        if (perks.metabolism && i % 2 === 0) color = '#50ff50';
+        drawGlowRect(p.x*20+1, p.y*20+1, 18, 18, color, i===0?20:10);
+    });
+
+    drawFog();
+}
+
+function drawFog() {
+    if (isPaused || perks.eagle) return;
+    const h = snake[0];
+    const grad = ctx.createRadialGradient(h.x*20+10, h.y*20+10, 20, h.x*20+10, h.y*20+10, 150);
+    grad.addColorStop(0, 'rgba(0,0,0,0)'); grad.addColorStop(1, 'rgba(0,0,0,0.95)');
+    ctx.globalCompositeOperation = 'destination-over';
+    ctx.fillStyle = grad; ctx.fillRect(0,0,600,600);
+    ctx.globalCompositeOperation = 'source-over';
 }
 
 function drawGlowRect(x, y, w, h, color, glow) {
-    ctx.save();
-    ctx.shadowBlur = glow;
-    ctx.shadowColor = color;
-    ctx.fillStyle = color;
-    ctx.fillRect(x, y, w, h);
-    ctx.restore();
-}
-
-function createParticles(x, y, color) {
-    for (let i = 0; i < 10; i++) {
-        particles.push({
-            x, y, vx: (Math.random() - 0.5) * 6, vy: (Math.random() - 0.5) * 6,
-            size: Math.random() * 3 + 1, life: 1, dec: Math.random() * 0.05 + 0.02, color
-        });
-    }
-}
-
-function updateParticles() {
-    for (let i = particles.length - 1; i >= 0; i--) {
-        const p = particles[i];
-        p.x += p.vx; p.y += p.vy; p.life -= p.dec;
-        if (p.life <= 0) particles.splice(i, 1);
-    }
-}
-
-function drawParticles() {
-    particles.forEach(p => {
-        ctx.save();
-        ctx.globalAlpha = p.life;
-        ctx.fillStyle = p.color;
-        ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
-        ctx.restore();
-    });
+    ctx.save(); ctx.shadowBlur = glow; ctx.shadowColor = color;
+    ctx.fillStyle = color; ctx.fillRect(x, y, w, h); ctx.restore();
 }
 
 init();
